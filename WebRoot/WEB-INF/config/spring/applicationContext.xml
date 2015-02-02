@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jee="http://www.springframework.org/schema/jee" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="  
+    http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+    http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+    http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-4.0.xsd
+    http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
+
+	<context:property-placeholder location="/WEB-INF/config/jdbc/jdbc.properties" />
+
+	<!-- 数据源 -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+
+		<!-- Oracle Driver -->
+		<property name="driverClassName">
+			<value>${jdbc.driver}</value>
+		</property>
+		<property name="url">
+			<value>${jdbc.url}</value>
+		</property>
+		<property name="username">
+			<value>${jdbc.user}</value>
+		</property>
+		<property name="password">
+			<value>${jdbc.password}</value>
+		</property>
+	</bean>
+
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource">
+			<ref bean="dataSource" />
+		</property>
+
+		<!-- Hibernate配置 -->
+		<property name="hibernateProperties">
+			<props>
+				<!-- 选择使用方言 -->
+				<prop key="hibernate.dialect">
+					org.hibernate.dialect.MySQL5Dialect
+				</prop>
+				<!-- 调试期间开启的选项 -->
+				<prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+				<prop key="hibernate.format_sql">${hibernate.format_sql}</prop>
+				<prop key="hibernate.use_sql_comments">${hibernate.use_sql_comments}</prop>
+
+				<prop key="hibernate.generate_statistics">${hibernate.generate_statistics}</prop>
+				<prop key="hibernate.connection.release_mode">
+					${hibernate.connection.release_mode}
+				</prop>
+				<!-- <prop key="hibernate.connection.autocommit">true</prop> -->
+				<prop key="hibernate.autoReconnect">${hibernate.autoReconnect}</prop>
+				<prop key="hibernate.cglib.use_reflection_optimizer">
+					${hibernate.cglib.use_reflection_optimizer}
+				</prop>
+
+				<!-- Ctreate/update the database tables automatically when the JVM starts 
+					up ：create/update -->
+				<!-- <prop key="hibernate.hbm2ddl.auto">update</prop> -->
+				<!-- Oracle JDBC default Fetch Size is 15 -->
+
+				<prop key="hibernate.jdbc.batch_size">${hibernate.jdbc.batch_size}</prop>
+				<prop key="hibernate.jdbc.fetch_size">${hibernate.jdbc.fetch_size}</prop>
+
+				<!-- <prop key="hibernate.transaction.factory.class">org.hibernate.transaction.JDBCTransactionFactory</prop> 
+					<prop key="hibernate.current_session_context_class">thread</prop> <prop key="hibernate.transaction.factory.class">org.hibernate.transaction.JTATransactionFactory</prop> 
+					<prop key="hibernate.current_session_context_class">jta</prop> -->
+				<!-- Spring托管Hibernate中使用二级缓存的方法之一 -->
+				<!-- <prop key="hibernate.cache.provider_class">org.hibernate.cache.EhCacheProvider</prop> -->
+				<!-- <prop key="hibernate.cache.provider_class">org.hibernate.cache.HashtableCacheProvider</prop> -->
+				<!-- 查询缓存 -->
+				<!-- <prop key="hibernate.cache.use_query_cache">true</prop> -->
+				<!-- 禁用hibernate二级缓存 -->
+				<!-- <prop key="hibernate.cache.use_second_level_cache">false</prop> -->
+			</props>
+		</property>
+		<property name="packagesToScan" value="com.model.po" />
+	</bean>
+
+	<!-- 配置事务管理器 -->
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory">
+			<ref bean="sessionFactory" />
+		</property>
+	</bean>
+
+	<!-- 配置事务的传播特性 -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="ins*" propagation="REQUIRED" />
+			<tx:method name="add*" propagation="REQUIRED" />
+			<tx:method name="sav*" propagation="REQUIRED" />
+			<tx:method name="mod*" propagation="REQUIRED" />
+			<tx:method name="upd*" propagation="REQUIRED" />
+			<tx:method name="rem*" propagation="REQUIRED" />
+			<tx:method name="del*" propagation="REQUIRED" />
+			<tx:method name="exe*" propagation="REQUIRED" />
+			<tx:method name="*" read-only="true" />
+		</tx:attributes>
+	</tx:advice>
+
+	<!-- 哪些类的哪些方法参与事务 -->
+	<aop:config>
+		<aop:pointcut id="allManagerMethod" expression="execution(* com.service.*.*(..))" />
+		<aop:advisor pointcut-ref="allManagerMethod" advice-ref="txAdvice" />
+	</aop:config>
+
+	<bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<context:component-scan base-package="com.dao" />
+	<context:component-scan base-package="com.service" />
+	<context:component-scan base-package="com.action" />
+</beans>
